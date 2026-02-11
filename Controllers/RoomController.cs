@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BattleTanks_Backend.Data;
@@ -8,6 +9,7 @@ namespace BattleTanks_Backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RoomController : ControllerBase
 {
     private readonly BattleTanksDbContext _context;
@@ -18,6 +20,8 @@ public class RoomController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<RoomResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<RoomResponse>>> GetRooms()
     {
         var rooms = await _context.GameSessions
@@ -27,7 +31,8 @@ public class RoomController : ControllerBase
                 s.RoomName,
                 s.CurrentPlayers,
                 s.MaxPlayers,
-                s.Status.ToString()
+                s.Status.ToString(),
+                s.MapName
             ))
             .ToListAsync();
 
@@ -35,6 +40,8 @@ public class RoomController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(RoomResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<RoomResponse>> CreateRoom(CreateRoomRequest request)
     {
         var session = new GameSession
@@ -50,13 +57,15 @@ public class RoomController : ControllerBase
         _context.GameSessions.Add(session);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(
-            nameof(GetRooms),
-            new RoomResponse(session.Id, session.RoomName, session.CurrentPlayers, session.MaxPlayers, session.Status.ToString())
-        );
+        var response = new RoomResponse(session.Id, session.RoomName, session.CurrentPlayers, session.MaxPlayers, session.Status.ToString(), session.MapName);
+        return CreatedAtAction(nameof(GetRooms), response);
     }
 
     [HttpPut("{id}/join")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult> JoinRoom(int id)
     {
         var session = await _context.GameSessions.FindAsync(id);
@@ -65,14 +74,31 @@ public class RoomController : ControllerBase
             return NotFound("Room not found");
 
         if (session.CurrentPlayers >= session.MaxPlayers)
-            return BadRequest("Room is full");
+            return Conflict("Room is full");
 
         if (session.Status != SessionStatus.Waiting)
-            return BadRequest("Room is not accepting players");
+            return Conflict("Room is not accepting players");
 
         session.CurrentPlayers++;
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Joined successfully", currentPlayers = session.CurrentPlayers });
+    }
+
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult> DeleteRoom(int id)
+    {
+        var session = await _context.GameSessions.FindAsync(id);
+
+        if (session == null)
+            return NotFound("Room not found");
+
+        _context.GameSessions.Remove(session);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
     }
 }

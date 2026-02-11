@@ -18,6 +18,12 @@ public class GameHub : Hub
         await Clients.All.SendAsync("ReceiveChatMessage", sender, message);
     }
 
+    public async Task StartGame(string mapName)
+    {
+        Console.WriteLine($"[GameHub] Game started with map: {mapName}");
+        await Clients.All.SendAsync("GameStarted", mapName);
+    }
+
     public async Task JoinGame(string playerId, string playerName)
     {
         ConnectedPlayers[Context.ConnectionId] = playerName;
