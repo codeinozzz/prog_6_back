@@ -1,5 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using BattleTanks_Backend.Data;
 using BattleTanks_Backend.DTOs;
 using BattleTanks_Backend.Models;
@@ -11,13 +15,17 @@ namespace BattleTanks_Backend.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly BattleTanksDbContext _context;
+    private readonly IConfiguration _config;
 
-    public AuthController(BattleTanksDbContext context)
+    public AuthController(BattleTanksDbContext context, IConfiguration config)
     {
         _context = context;
+        _config = config;
     }
 
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         if (await _context.Players.AnyAsync(p => p.Username == request.Username))
@@ -37,10 +45,14 @@ public class AuthController : ControllerBase
         _context.Players.Add(player);
         await _context.SaveChangesAsync();
 
-        return Ok(new AuthResponse(player.Id, player.Username, "simple-token-" + player.Id));
+        var token = GenerateJwtToken(player);
+        return Ok(new AuthResponse(player.Id, player.Username, token));
+    
     }
 
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var player = await _context.Players
@@ -49,6 +61,32 @@ public class AuthController : ControllerBase
         if (player == null || !BCrypt.Net.BCrypt.Verify(request.Password, player.PasswordHash))
             return Unauthorized("Invalid credentials");
 
-        return Ok(new AuthResponse(player.Id, player.Username, "simple-token-" + player.Id));
+        var token = GenerateJwtToken(player);
+        return Ok(new AuthResponse(player.Id, player.Username, token));
+    }
+
+    private string GenerateJwtToken(Player player)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, player.Id.ToString()),
+            new Claim(ClaimTypes.Name, player.Username),
+            new Claim(ClaimTypes.Email, player.Email)
+        };
+
+        var expireMinutes = int.Parse(_config["Jwt:ExpireMinutes"] ?? "120");
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expireMinutes),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
