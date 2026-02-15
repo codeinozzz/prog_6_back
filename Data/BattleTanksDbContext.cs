@@ -10,7 +10,6 @@ public class BattleTanksDbContext : DbContext
 
     public DbSet<Player> Players { get; set; }
     public DbSet<GameSession> GameSessions { get; set; }
-    public DbSet<Score> Scores { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
