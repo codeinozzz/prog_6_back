@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  emqx:
+    image: emqx:5.8
+    container_name: battletanks-emqx
+    ports:
+      - "1883:1883"    # MQTT TCP
+      - "8083:8083"    # MQTT WebSocket (for Angular)
+      - "18083:18083"  # EMQX Dashboard (admin/public)
+    environment:
+      - EMQX_ALLOW_ANONYMOUS=true
+    volumes:
+      - emqx_data:/opt/emqx/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: battletanks-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  emqx_data:
+  redis_data:
