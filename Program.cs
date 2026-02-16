@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using StackExchange.Redis;
 using BattleTanks_Backend.Data;
 using BattleTanks_Backend.Hubs;
+using BattleTanks_Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +62,27 @@ builder.Services.AddSignalR();
 
 builder.Services.AddDbContext<BattleTanksDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Redis — opcional: si no está disponible el juego funciona igual
+IConnectionMultiplexer? redisConnection = null;
+try
+{
+    var connStr = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
+    redisConnection = ConnectionMultiplexer.Connect(connStr);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[Redis] Not available: {ex.Message}");
+}
+#pragma warning disable CS8634
+builder.Services.AddSingleton<IConnectionMultiplexer?>(_ => redisConnection);
+#pragma warning restore CS8634
+builder.Services.AddSingleton<IRedisHistoryService, RedisHistoryService>();
+
+// MQTT — registrado como singleton Y como hosted service
+builder.Services.AddSingleton<MqttGameService>();
+builder.Services.AddSingleton<IMqttGameService>(sp => sp.GetRequiredService<MqttGameService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttGameService>());
 
 builder.Services.AddCors(options =>
 {
