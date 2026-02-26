@@ -92,7 +92,7 @@ public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposabl
             .Build();
 
         await _client.PublishAsync(message, CancellationToken.None);
-        _logger.LogDebug("[MQTT] Published to {Topic}: {Payload}", topic, json);
+        _logger.LogInformation("[MQTT] Published to {Topic}: {Payload}", topic, json);
     }
 
     // ---- Public API ----
