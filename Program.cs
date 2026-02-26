@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using StackExchange.Redis;
 using BattleTanks_Backend.Data;
 using BattleTanks_Backend.Hubs;
+using BattleTanks_Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,8 +60,30 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
 
+// Redis: opcional, el servidor arranca aunque Redis no este disponible
+IConnectionMultiplexer? redisConnection = null;
+try
+{
+    redisConnection = ConnectionMultiplexer.Connect(
+        builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
+    Console.WriteLine("[Redis] Connected");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[Redis] Not available: {ex.Message}");
+}
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    _ => redisConnection ?? ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false"));
+builder.Services.AddScoped<RankingCacheService>();
+
+// Activity 3: Connection Pooling - Npgsql reutiliza conexiones del pool en lugar de abrir una nueva
+// por cada request. MaxPoolSize limita conexiones simultaneas, MinPoolSize mantiene conexiones
+// precalentadas para reducir latencia en el primer request
 builder.Services.AddDbContext<BattleTanksDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions => npgsqlOptions.CommandTimeout(30)
+    ));
 
 builder.Services.AddCors(options =>
 {

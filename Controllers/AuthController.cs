@@ -1,9 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using BattleTanks_Backend.Data;
 using BattleTanks_Backend.DTOs;
 using BattleTanks_Backend.Models;
@@ -16,11 +18,13 @@ public class AuthController : ControllerBase
 {
     private readonly BattleTanksDbContext _context;
     private readonly IConfiguration _config;
+    private readonly IDatabase _redis;
 
-    public AuthController(BattleTanksDbContext context, IConfiguration config)
+    public AuthController(BattleTanksDbContext context, IConfiguration config, IConnectionMultiplexer redis)
     {
         _context = context;
         _config = config;
+        _redis = redis.GetDatabase();
     }
 
     [HttpPost("register")]
@@ -65,6 +69,32 @@ public class AuthController : ControllerBase
         return Ok(new AuthResponse(player.Id, player.Username, token));
     }
 
+    // POST /api/auth/logout
+    // Guarda el JTI del token en Redis con el TTL restante para invalidarlo (blacklist)
+    // Asi aunque el token sea valido criptograficamente, se puede revocar antes de que expire
+    [Authorize]
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+        var expClaim = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
+
+        if (jti != null && expClaim != null)
+        {
+            var expUnix = long.Parse(expClaim);
+            var expDate = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+            var ttl = expDate - DateTime.UtcNow;
+
+            if (ttl > TimeSpan.Zero)
+            {
+                // Almacenar JTI en Redis con el tiempo de vida restante del token
+                _redis.StringSet($"blacklist:{jti}", "revoked", ttl);
+            }
+        }
+
+        return Ok(new { message = "Session closed successfully" });
+    }
+
     private string GenerateJwtToken(Player player)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
@@ -72,6 +102,7 @@ public class AuthController : ControllerBase
 
         var claims = new[]
         {
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(ClaimTypes.NameIdentifier, player.Id.ToString()),
             new Claim(ClaimTypes.Name, player.Username),
             new Claim(ClaimTypes.Email, player.Email)
