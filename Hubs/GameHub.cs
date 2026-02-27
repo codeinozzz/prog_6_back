@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 using BattleTanks_Backend.Data;
 using BattleTanks_Backend.Models;
 using BattleTanks_Backend.Services;
@@ -17,12 +18,14 @@ public class GameHub : Hub
     private readonly BattleTanksDbContext _context;
     private readonly IMqttGameService _mqtt;
     private readonly IRedisHistoryService _history;
+    private readonly IDatabase _redis;
 
-    public GameHub(BattleTanksDbContext context, IMqttGameService mqtt, IRedisHistoryService history)
+    public GameHub(BattleTanksDbContext context, IMqttGameService mqtt, IRedisHistoryService history, IConnectionMultiplexer redis)
     {
         _context = context;
         _mqtt = mqtt;
         _history = history;
+        _redis = redis.GetDatabase();
     }
 
     public async Task JoinGame(string playerId, string playerName, string roomId, double x = 0, double y = 0)
@@ -46,6 +49,14 @@ public class GameHub : Hub
         var history = await _history.GetRoomHistoryAsync(roomId, 20);
         if (history.Any())
             await Clients.Caller.SendAsync("RoomHistory", history);
+
+        // Cache en Redis: incrementar contador de jugadores por sala y guardar nombre del jugador
+        try
+        {
+            await _redis.HashSetAsync($"room:{roomId}:players", Context.ConnectionId, playerName);
+            await _redis.StringIncrementAsync($"room:{roomId}:count");
+        }
+        catch { /* Redis no disponible */ }
     }
 
     public async Task SendPlayerMove(string playerId, object movement)
@@ -98,6 +109,14 @@ public class GameHub : Hub
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
             await Clients.OthersInGroup(groupName).SendAsync("PlayerLeft", Context.ConnectionId);
             Console.WriteLine($"[GameHub] Player left room {conn.RoomId}: {conn.PlayerName}");
+
+            // Limpiar entrada del jugador en Redis
+            try
+            {
+                await _redis.HashDeleteAsync($"room:{conn.RoomId}:players", Context.ConnectionId);
+                await _redis.StringDecrementAsync($"room:{conn.RoomId}:count");
+            }
+            catch { /* Redis no disponible */ }
 
             await DecrementPlayerCount(conn.RoomId);
         }
