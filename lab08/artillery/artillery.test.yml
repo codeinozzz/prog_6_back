@@ -1,0 +1,95 @@
+# artillery.test.yml - Prueba básica de endpoints REST con Artillery
+# Ejecutar: artillery run lab08/artillery/artillery.test.yml
+# Con reporte HTML: artillery run --output lab08/results/artillery-report.json lab08/artillery/artillery.test.yml
+#                   artillery report lab08/results/artillery-report.json
+
+config:
+  target: "http://localhost:5174"
+  phases:
+    - duration: 10
+      arrivalRate: 5
+      name: "Warm up (5 usuarios/seg)"
+    - duration: 30
+      arrivalRate: 20
+      name: "Carga sostenida (20 usuarios/seg)"
+    - duration: 10
+      arrivalRate: 50
+      name: "Pico de tráfico (50 usuarios/seg)"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+  plugins:
+    metrics-by-endpoint: {}
+  # Umbral de éxito: p95 < 500ms y tasa de errores < 5%
+  ensure:
+    p95: 500
+    maxErrorRate: 5
+
+scenarios:
+  # Escenario 1: Registro y login de usuario nuevo
+  - name: "Flujo de autenticación completo"
+    weight: 60
+    flow:
+      - post:
+          url: "/api/auth/register"
+          json:
+            username: "artillery_{{ $randomString(8) }}"
+            password: "Artillery123!"
+            email: "{{ $randomString(6) }}@test.com"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          expect:
+            - statusCode: [200, 201, 409]
+      - think: 0.5
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "artillery_{{ $randomString(8) }}"
+            password: "Artillery123!"
+          capture:
+            - json: "$.token"
+              as: "loginToken"
+          expect:
+            - statusCode: [200, 401]
+
+  # Escenario 2: Consulta del ranking (lectura pesada)
+  - name: "Lectura de ranking con paginación"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/ranking?page=1&pageSize=10"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      - think: 0.2
+      - get:
+          url: "/api/ranking?page=2&pageSize=10"
+          expect:
+            - statusCode: 200
+      - think: 0.2
+      - get:
+          url: "/api/ranking/benchmark"
+          expect:
+            - statusCode: 200
+
+  # Escenario 3: Consulta de salas disponibles
+  - name: "Listar salas de juego"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "testplayer"
+            password: "Test123!"
+          capture:
+            - json: "$.token"
+              as: "roomToken"
+          expect:
+            - statusCode: [200, 401]
+      - get:
+          url: "/api/room"
+          headers:
+            Authorization: "Bearer {{ roomToken }}"
+          expect:
+            - statusCode: [200, 401]

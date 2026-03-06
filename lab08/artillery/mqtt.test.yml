@@ -1,0 +1,80 @@
+# mqtt.test.yml - Prueba de carga en MQTT con Artillery
+# Simula 50 dispositivos suscritos a eventos de chat y power-ups de BattleTanks
+# Ejecutar: artillery run --output lab08/results/mqtt-report.json lab08/artillery/mqtt.test.yml
+
+config:
+  target: "mqtt://localhost:1883"
+  engines:
+    mqtt: {}
+  plugins:
+    metrics-by-endpoint:
+      groupDynamicURLs: false
+  mqtt:
+    auth:
+      clientId: "battletanks-loadtest"
+    clean: true
+    keepAlive: 30
+  phases:
+    - duration: 20
+      arrivalRate: 5
+      name: "Warm up (5 clientes/seg)"
+    - duration: 40
+      arrivalRate: 25
+      name: "Carga normal (50 simultáneos)"
+    - duration: 10
+      arrivalRate: 5
+      name: "Ramp-down"
+  ensure:
+    maxErrorRate: 5
+
+scenarios:
+  - name: "Suscriptor de chat"
+    weight: 50
+    engine: mqtt
+    flow:
+      - subscribe:
+          topic: "battletanks/room_1/chat"
+          qos: 1
+      - think: 2
+      - publish:
+          topic: "battletanks/room_1/chat"
+          payload: '{"sender":"loadtest","message":"hola desde artillery"}'
+          qos: 1
+      - think: 1
+      - unsubscribe:
+          topic: "battletanks/room_1/chat"
+
+  - name: "Receptor de power-ups"
+    weight: 30
+    engine: mqtt
+    flow:
+      - subscribe:
+          topic: "battletanks/+/powerup"
+          qos: 0
+      - think: 3
+      - unsubscribe:
+          topic: "battletanks/+/powerup"
+
+  - name: "Jugador completo"
+    weight: 20
+    engine: mqtt
+    flow:
+      - subscribe:
+          topic: "battletanks/room_1/chat"
+          qos: 1
+      - subscribe:
+          topic: "battletanks/room_1/powerup"
+          qos: 0
+      - think: 1
+      - publish:
+          topic: "battletanks/room_1/chat"
+          payload: '{"sender":"player","message":"msg1"}'
+          qos: 1
+      - think: 0.5
+      - publish:
+          topic: "battletanks/room_1/chat"
+          payload: '{"sender":"player","message":"msg2"}'
+          qos: 1
+      - think: 1
+      - unsubscribe:
+          topic: "battletanks/room_1/chat"

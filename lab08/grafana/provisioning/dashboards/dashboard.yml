@@ -1,0 +1,15 @@
+# Provisioning del proveedor de dashboards en Grafana
+# Indica a Grafana dónde buscar los archivos JSON de dashboards.
+
+apiVersion: 1
+
+providers:
+  - name: BattleTanks Lab08
+    orgId: 1
+    folder: "BattleTanks Benchmarking"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
