@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # ---- Infraestructura de juego ----
   emqx:
     image: emqx:5.8
     container_name: battletanks-emqx
@@ -12,8 +13,47 @@ services:
       - EMQX_ALLOW_ANONYMOUS=true
     volumes:
       - emqx_data:/opt/emqx/data
-    restart: unless-stoppedv
+    restart: unless-stopped
 
+  # ---- Benchmarking & Observabilidad (Lab 08) ----
+  influxdb:
+    image: influxdb:2.7
+    container_name: battletanks-influxdb
+    ports:
+      - "8086:8086"    # InfluxDB HTTP API & UI
+    env_file:
+      - lab08/influxdb/config.env
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: battletanks-grafana
+    ports:
+      - "3000:3000"    # Grafana UI (admin/admin por defecto)
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=battletanks_grafana_2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # Provisioning automático del datasource InfluxDB
+      - GF_DATASOURCES_DEFAULT_TYPE=influxdb
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./lab08/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   emqx_data:
+  influxdb_data:
+  influxdb_config:
+  grafana_data:

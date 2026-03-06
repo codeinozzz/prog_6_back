@@ -1,0 +1,20 @@
+# Provisioning automático del datasource InfluxDB en Grafana
+# Grafana carga este archivo al iniciar y configura la conexión automáticamente.
+# Referencia: https://grafana.com/docs/grafana/latest/administration/provisioning/
+
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-k6
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: battletanks-org
+      defaultBucket: k6
+      tlsSkipVerify: true
+    secureJsonData:
+      token: battletanks-super-secret-token-2024
+    editable: true

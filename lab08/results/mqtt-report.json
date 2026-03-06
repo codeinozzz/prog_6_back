@@ -1,0 +1,538 @@
+{
+  "aggregate": {
+    "counters": {
+      "vusers.created_by_name.Suscriptor de chat": 593,
+      "vusers.created": 1150,
+      "mqtt.connect": 1150,
+      "mqtt.reconnect.battletanks-loadtest": 2224,
+      "mqtt.publish_count": 1013,
+      "mqtt.close": 1150,
+      "vusers.failed": 0,
+      "vusers.completed": 1150,
+      "errors.Connection refused: Server unavailable": 192,
+      "vusers.created_by_name.Receptor de power-ups": 347,
+      "vusers.created_by_name.Jugador completo": 210
+    },
+    "rates": {
+      "mqtt.connect_rate": 13,
+      "mqtt.publish_rate": 14,
+      "mqtt.error_rate": 7
+    },
+    "firstCounterAt": 1772704156713,
+    "firstHistogramAt": 1772704159821,
+    "lastCounterAt": 1772704228940,
+    "lastHistogramAt": 1772704228940,
+    "firstMetricAt": 1772704156713,
+    "lastMetricAt": 1772704228940,
+    "period": 1772704220000,
+    "summaries": {
+      "vusers.session_length": {
+        "min": 2007,
+        "max": 7506,
+        "count": 1150,
+        "mean": 2968.5,
+        "p50": 3011.6,
+        "median": 3011.6,
+        "p75": 3072.4,
+        "p90": 3072.4,
+        "p95": 3984.7,
+        "p99": 5065.6,
+        "p999": 6064.7
+      }
+    },
+    "histograms": {
+      "vusers.session_length": {
+        "min": 2007,
+        "max": 7506,
+        "count": 1150,
+        "mean": 2968.5,
+        "p50": 3011.6,
+        "median": 3011.6,
+        "p75": 3072.4,
+        "p90": 3072.4,
+        "p95": 3984.7,
+        "p99": 5065.6,
+        "p999": 6064.7
+      }
+    }
+  },
+  "intermediate": [
+    {
+      "counters": {
+        "vusers.created_by_name.Suscriptor de chat": 12,
+        "vusers.created": 20,
+        "mqtt.connect": 20,
+        "mqtt.reconnect.battletanks-loadtest": 23,
+        "mqtt.publish_count": 15,
+        "mqtt.close": 6,
+        "vusers.failed": 0,
+        "vusers.completed": 6,
+        "vusers.created_by_name.Receptor de power-ups": 4,
+        "vusers.created_by_name.Jugador completo": 4
+      },
+      "rates": {
+        "mqtt.connect_rate": 5,
+        "mqtt.publish_rate": 15
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.publish_rate": null,
+      "firstCounterAt": 1772704156713,
+      "firstHistogramAt": 1772704159821,
+      "lastCounterAt": 1772704159958,
+      "lastHistogramAt": 1772704159958,
+      "firstMetricAt": 1772704156713,
+      "lastMetricAt": 1772704159958,
+      "period": "1772704150000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2038.2,
+          "max": 3112.3,
+          "count": 6,
+          "mean": 2738.8,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3134.5,
+          "p90": 3134.5,
+          "p95": 3134.5,
+          "p99": 3134.5,
+          "p999": 3134.5
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2038.2,
+          "max": 3112.3,
+          "count": 6,
+          "mean": 2738.8,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3134.5,
+          "p90": 3134.5,
+          "p95": 3134.5,
+          "p99": 3134.5,
+          "p999": 3134.5
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Suscriptor de chat": 31,
+        "vusers.created": 50,
+        "mqtt.connect": 50,
+        "mqtt.reconnect.battletanks-loadtest": 92,
+        "mqtt.publish_count": 41,
+        "mqtt.close": 48,
+        "vusers.failed": 0,
+        "vusers.completed": 48,
+        "errors.Connection refused: Server unavailable": 4,
+        "vusers.created_by_name.Receptor de power-ups": 13,
+        "vusers.created_by_name.Jugador completo": 6
+      },
+      "rates": {
+        "mqtt.connect_rate": 5,
+        "mqtt.publish_rate": 5,
+        "mqtt.error_rate": 4
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.publish_rate": null,
+      "mqtt.error_rate": null,
+      "firstCounterAt": 1772704160712,
+      "firstHistogramAt": 1772704160719,
+      "lastCounterAt": 1772704169925,
+      "lastHistogramAt": 1772704169875,
+      "firstMetricAt": 1772704160712,
+      "lastMetricAt": 1772704169925,
+      "period": "1772704160000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2009.7,
+          "max": 4058.6,
+          "count": 48,
+          "mean": 2939.3,
+          "p50": 3072.4,
+          "median": 3072.4,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3828.5,
+          "p99": 3828.5,
+          "p999": 3828.5
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2009.7,
+          "max": 4058.6,
+          "count": 48,
+          "mean": 2939.3,
+          "p50": 3072.4,
+          "median": 3072.4,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3828.5,
+          "p99": 3828.5,
+          "p999": 3828.5
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Suscriptor de chat": 55,
+        "vusers.created": 121,
+        "mqtt.connect": 121,
+        "vusers.created_by_name.Jugador completo": 33,
+        "mqtt.reconnect.battletanks-loadtest": 171,
+        "vusers.created_by_name.Receptor de power-ups": 33,
+        "mqtt.publish_count": 86,
+        "errors.Connection refused: Server unavailable": 20,
+        "mqtt.close": 64,
+        "vusers.failed": 0,
+        "vusers.completed": 64
+      },
+      "rates": {
+        "mqtt.connect_rate": 30,
+        "mqtt.publish_rate": 35,
+        "mqtt.error_rate": 11
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.publish_rate": null,
+      "firstCounterAt": 1772704170712,
+      "firstHistogramAt": 1772704170715,
+      "lastCounterAt": 1772704179984,
+      "lastHistogramAt": 1772704179932,
+      "firstMetricAt": 1772704170712,
+      "lastMetricAt": 1772704179984,
+      "period": "1772704170000",
+      "mqtt.error_rate": null,
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2007.8,
+          "max": 5808.8,
+          "count": 64,
+          "mean": 2883.4,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3134.5,
+          "p95": 3828.5,
+          "p99": 3984.7,
+          "p999": 3984.7
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2007.8,
+          "max": 5808.8,
+          "count": 64,
+          "mean": 2883.4,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3134.5,
+          "p95": 3828.5,
+          "p99": 3984.7,
+          "p999": 3984.7
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Suscriptor de chat": 138,
+        "vusers.created": 250,
+        "mqtt.connect": 250,
+        "mqtt.reconnect.battletanks-loadtest": 487,
+        "mqtt.close": 247,
+        "vusers.failed": 0,
+        "vusers.completed": 247,
+        "errors.Connection refused: Server unavailable": 47,
+        "vusers.created_by_name.Receptor de power-ups": 69,
+        "mqtt.publish_count": 224,
+        "vusers.created_by_name.Jugador completo": 43
+      },
+      "rates": {
+        "mqtt.connect_rate": 25,
+        "mqtt.error_rate": 15,
+        "mqtt.publish_rate": 25
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.error_rate": null,
+      "mqtt.publish_rate": null,
+      "firstCounterAt": 1772704180022,
+      "firstHistogramAt": 1772704180032,
+      "lastCounterAt": 1772704189991,
+      "lastHistogramAt": 1772704189991,
+      "firstMetricAt": 1772704180022,
+      "lastMetricAt": 1772704189991,
+      "period": "1772704180000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2009.6,
+          "max": 7030,
+          "count": 247,
+          "mean": 2961.5,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3984.7,
+          "p99": 5065.6,
+          "p999": 6064.7
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2009.6,
+          "max": 7030,
+          "count": 247,
+          "mean": 2961.5,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3984.7,
+          "p99": 5065.6,
+          "p999": 6064.7
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Suscriptor de chat": 125,
+        "vusers.created": 250,
+        "mqtt.close": 254,
+        "vusers.failed": 0,
+        "vusers.completed": 254,
+        "mqtt.connect": 248,
+        "mqtt.reconnect.battletanks-loadtest": 486,
+        "mqtt.publish_count": 215,
+        "vusers.created_by_name.Receptor de power-ups": 87,
+        "errors.Connection refused: Server unavailable": 32,
+        "vusers.created_by_name.Jugador completo": 38
+      },
+      "rates": {
+        "mqtt.connect_rate": 25,
+        "mqtt.publish_rate": 26,
+        "mqtt.error_rate": 17
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.publish_rate": null,
+      "mqtt.error_rate": null,
+      "firstCounterAt": 1772704190022,
+      "firstHistogramAt": 1772704190041,
+      "lastCounterAt": 1772704199991,
+      "lastHistogramAt": 1772704199991,
+      "firstMetricAt": 1772704190022,
+      "lastMetricAt": 1772704199991,
+      "period": "1772704190000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2011.5,
+          "max": 5043.6,
+          "count": 254,
+          "mean": 2978.7,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 4065.2,
+          "p99": 5065.6,
+          "p999": 5065.6
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2011.5,
+          "max": 5043.6,
+          "count": 254,
+          "mean": 2978.7,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 4065.2,
+          "p99": 5065.6,
+          "p999": 5065.6
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Receptor de power-ups": 68,
+        "vusers.created": 250,
+        "mqtt.close": 247,
+        "vusers.failed": 0,
+        "vusers.completed": 247,
+        "mqtt.connect": 252,
+        "mqtt.reconnect.battletanks-loadtest": 467,
+        "vusers.created_by_name.Jugador completo": 57,
+        "vusers.created_by_name.Suscriptor de chat": 125,
+        "mqtt.publish_count": 221,
+        "errors.Connection refused: Server unavailable": 29
+      },
+      "rates": {
+        "mqtt.connect_rate": 25,
+        "mqtt.publish_rate": 28,
+        "mqtt.error_rate": 9
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.publish_rate": null,
+      "firstCounterAt": 1772704200022,
+      "firstHistogramAt": 1772704200078,
+      "lastCounterAt": 1772704209975,
+      "lastHistogramAt": 1772704209921,
+      "firstMetricAt": 1772704200022,
+      "lastMetricAt": 1772704209975,
+      "period": "1772704200000",
+      "mqtt.error_rate": null,
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2007,
+          "max": 6045.4,
+          "count": 247,
+          "mean": 2897,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3072.4,
+          "p99": 4065.2,
+          "p999": 4065.2
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2007,
+          "max": 6045.4,
+          "count": 247,
+          "mean": 2897,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3072.4,
+          "p99": 4065.2,
+          "p999": 4065.2
+        }
+      }
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Receptor de power-ups": 65,
+        "vusers.created": 179,
+        "mqtt.connect": 179,
+        "mqtt.reconnect.battletanks-loadtest": 420,
+        "vusers.created_by_name.Suscriptor de chat": 89,
+        "mqtt.close": 237,
+        "vusers.failed": 0,
+        "vusers.completed": 237,
+        "mqtt.publish_count": 177,
+        "errors.Connection refused: Server unavailable": 52,
+        "vusers.created_by_name.Jugador completo": 25
+      },
+      "rates": {
+        "mqtt.connect_rate": 25,
+        "mqtt.publish_rate": 24,
+        "mqtt.error_rate": 19
+      },
+      "mqtt.connect_rate": null,
+      "mqtt.publish_rate": null,
+      "mqtt.error_rate": null,
+      "firstCounterAt": 1772704210022,
+      "firstHistogramAt": 1772704210028,
+      "lastCounterAt": 1772704219928,
+      "lastHistogramAt": 1772704219928,
+      "firstMetricAt": 1772704210022,
+      "lastMetricAt": 1772704219928,
+      "period": "1772704210000",
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2007.1,
+          "max": 6069.6,
+          "count": 237,
+          "mean": 3017.8,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3984.7,
+          "p99": 5065.6,
+          "p999": 6064.7
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2007.1,
+          "max": 6069.6,
+          "count": 237,
+          "mean": 3017.8,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 3072.4,
+          "p95": 3984.7,
+          "p99": 5065.6,
+          "p999": 6064.7
+        }
+      }
+    },
+    {
+      "counters": {
+        "mqtt.close": 47,
+        "vusers.failed": 0,
+        "vusers.completed": 47,
+        "mqtt.reconnect.battletanks-loadtest": 78,
+        "mqtt.publish_count": 34,
+        "vusers.created_by_name.Suscriptor de chat": 18,
+        "vusers.created": 30,
+        "mqtt.connect": 30,
+        "vusers.created_by_name.Jugador completo": 4,
+        "vusers.created_by_name.Receptor de power-ups": 8,
+        "errors.Connection refused: Server unavailable": 8
+      },
+      "rates": {
+        "mqtt.publish_rate": 7,
+        "mqtt.connect_rate": 6,
+        "mqtt.error_rate": 5
+      },
+      "firstCounterAt": 1772704220147,
+      "firstHistogramAt": 1772704220147,
+      "lastCounterAt": 1772704228940,
+      "lastHistogramAt": 1772704228940,
+      "firstMetricAt": 1772704220147,
+      "lastMetricAt": 1772704228940,
+      "period": "1772704220000",
+      "mqtt.publish_rate": null,
+      "mqtt.connect_rate": null,
+      "mqtt.error_rate": null,
+      "summaries": {
+        "vusers.session_length": {
+          "min": 2007.2,
+          "max": 7506,
+          "count": 47,
+          "mean": 3252.5,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 4065.2,
+          "p95": 4065.2,
+          "p99": 6064.7,
+          "p999": 6064.7
+        }
+      },
+      "histograms": {
+        "vusers.session_length": {
+          "min": 2007.2,
+          "max": 7506,
+          "count": 47,
+          "mean": 3252.5,
+          "p50": 3011.6,
+          "median": 3011.6,
+          "p75": 3072.4,
+          "p90": 4065.2,
+          "p95": 4065.2,
+          "p99": 6064.7,
+          "p999": 6064.7
+        }
+      }
+    }
+  ]
+}

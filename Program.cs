@@ -75,6 +75,7 @@ catch (Exception ex)
 builder.Services.AddSingleton<IConnectionMultiplexer>(
     _ => redisConnection ?? ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false"));
 builder.Services.AddScoped<RankingCacheService>();
+builder.Services.AddSingleton<IRedisHistoryService, RedisHistoryService>();
 
 // Activity 3: Connection Pooling - Npgsql reutiliza conexiones del pool en lugar de abrir una nueva
 // por cada request. MaxPoolSize limita conexiones simultaneas, MinPoolSize mantiene conexiones
@@ -84,22 +85,6 @@ builder.Services.AddDbContext<BattleTanksDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection"),
         npgsqlOptions => npgsqlOptions.CommandTimeout(30)
     ));
-
-// Redis — opcional: si no está disponible el juego funciona igual
-IConnectionMultiplexer? redisConnection = null;
-try
-{
-    var connStr = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
-    redisConnection = ConnectionMultiplexer.Connect(connStr);
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"[Redis] Not available: {ex.Message}");
-}
-#pragma warning disable CS8634
-builder.Services.AddSingleton<IConnectionMultiplexer?>(_ => redisConnection);
-#pragma warning restore CS8634
-builder.Services.AddSingleton<IRedisHistoryService, RedisHistoryService>();
 
 // MQTT — registrado como singleton Y como hosted service
 builder.Services.AddSingleton<MqttGameService>();
