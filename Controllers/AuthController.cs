@@ -9,6 +9,7 @@ using StackExchange.Redis;
 using BattleTanks_Backend.Data;
 using BattleTanks_Backend.DTOs;
 using BattleTanks_Backend.Models;
+using BattleTanks_Backend.Services;
 
 namespace BattleTanks_Backend.Controllers;
 
@@ -19,12 +20,14 @@ public class AuthController : ControllerBase
     private readonly BattleTanksDbContext _context;
     private readonly IConfiguration _config;
     private readonly IDatabase _redis;
+    private readonly PlayerService _playerService;
 
-    public AuthController(BattleTanksDbContext context, IConfiguration config, IConnectionMultiplexer redis)
+    public AuthController(BattleTanksDbContext context, IConfiguration config, IConnectionMultiplexer redis, PlayerService playerService)
     {
         _context = context;
         _config = config;
         _redis = redis.GetDatabase();
+        _playerService = playerService;
     }
 
     [HttpPost("register")]
@@ -59,8 +62,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
-        var player = await _context.Players
-            .FirstOrDefaultAsync(p => p.Username == request.Username);
+        var player = await _playerService.FindByUsernameAsync(request.Username);
 
         if (player == null || !BCrypt.Net.BCrypt.Verify(request.Password, player.PasswordHash))
             return Unauthorized("Invalid credentials");

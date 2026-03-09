@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
-using BattleTanks_Backend.Data;
 using BattleTanks_Backend.Models;
 using BattleTanks_Backend.Services;
 
@@ -15,14 +13,14 @@ public class GameHub : Hub
     private static readonly ConcurrentDictionary<string, PlayerConnection> ConnectedPlayers = new();
     private static readonly Random _random = new();
 
-    private readonly BattleTanksDbContext _context;
+    private readonly PlayerService _playerService;
     private readonly IMqttGameService _mqtt;
     private readonly IRedisHistoryService _history;
     private readonly IDatabase _redis;
 
-    public GameHub(BattleTanksDbContext context, IMqttGameService mqtt, IRedisHistoryService history, IConnectionMultiplexer redis)
+    public GameHub(PlayerService playerService, IMqttGameService mqtt, IRedisHistoryService history, IConnectionMultiplexer redis)
     {
-        _context = context;
+        _playerService = playerService;
         _mqtt = mqtt;
         _history = history;
         _redis = redis.GetDatabase();
@@ -243,18 +241,6 @@ public class GameHub : Hub
     private async Task DecrementPlayerCount(string roomId)
     {
         if (!int.TryParse(roomId, out var sessionId)) return;
-
-        var session = await _context.GameSessions.FindAsync(sessionId);
-        if (session == null) return;
-
-        session.CurrentPlayers = Math.Max(0, session.CurrentPlayers - 1);
-
-        if (session.CurrentPlayers <= 0)
-        {
-            _context.GameSessions.Remove(session);
-            Console.WriteLine($"[GameHub] Room {roomId} empty, removed");
-        }
-
-        await _context.SaveChangesAsync();
+        await _playerService.DecrementSessionAsync(sessionId);
     }
 }
