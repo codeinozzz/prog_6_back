@@ -13,6 +13,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+builder.Services.AddMiniProfiler(options =>
+{
+    options.RouteBasePath = "/profiler";
+    options.ColorScheme = StackExchange.Profiling.ColorScheme.Dark;
+    options.PopupRenderPosition = StackExchange.Profiling.RenderPosition.BottomLeft;
+    options.PopupShowTimeWithChildren = true;
+});
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -76,6 +84,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(
     _ => redisConnection ?? ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false"));
 builder.Services.AddScoped<RankingCacheService>();
 builder.Services.AddSingleton<IRedisHistoryService, RedisHistoryService>();
+builder.Services.AddScoped<PlayerService>();
 
 // Activity 3: Connection Pooling - Npgsql reutiliza conexiones del pool en lugar de abrir una nueva
 // por cada request. MaxPoolSize limita conexiones simultaneas, MinPoolSize mantiene conexiones
@@ -108,6 +117,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseMiniProfiler();
 }
 
 app.UseCors("AllowAngular");
