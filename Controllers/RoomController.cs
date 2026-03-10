@@ -24,8 +24,17 @@ public class RoomController : ControllerBase
     [ProducesResponseType(typeof(List<RoomResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<RoomResponse>>> GetRooms()
     {
+        var stale = await _context.GameSessions
+            .Where(s => s.CurrentPlayers <= 0 || s.Status == SessionStatus.Finished)
+            .ToListAsync();
+        if (stale.Any())
+        {
+            _context.GameSessions.RemoveRange(stale);
+            await _context.SaveChangesAsync();
+        }
+
         var rooms = await _context.GameSessions
-            .Where(s => s.Status == SessionStatus.Waiting)
+            .Where(s => (s.Status == SessionStatus.Waiting || s.Status == SessionStatus.InProgress) && s.CurrentPlayers > 0)
             .Select(s => new RoomResponse(
                 s.Id,
                 s.RoomName,
@@ -76,8 +85,8 @@ public class RoomController : ControllerBase
         if (session.CurrentPlayers >= session.MaxPlayers)
             return Conflict("Room is full");
 
-        if (session.Status != SessionStatus.Waiting)
-            return Conflict("Room is not accepting players");
+        if (session.Status == SessionStatus.Finished)
+            return Conflict("Room has already finished");
 
         session.CurrentPlayers++;
         await _context.SaveChangesAsync();

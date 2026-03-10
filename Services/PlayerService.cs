@@ -44,4 +44,24 @@ public class PlayerService
         sw.Stop();
         _logger.LogInformation("[Profiling] PlayerService.DecrementSession sessionId={Id} elapsed={Ms}ms", sessionId, sw.ElapsedMilliseconds);
     }
+
+    public async Task SaveGameResultAsync(string username, int points, bool isVictory)
+    {
+        var player = await _context.Players.FirstOrDefaultAsync(p => p.Username == username);
+        if (player == null) return;
+
+        _context.Scores.Add(new Score
+        {
+            PlayerId = player.Id,
+            Points = points,
+            AchievedAt = DateTime.UtcNow
+        });
+
+        player.TotalScore += points;
+        player.GamesPlayed++;
+        if (isVictory) player.Victories++;
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("[Score] Saved result for {Username}: points={Points} victory={Victory}", username, points, isVictory);
+    }
 }

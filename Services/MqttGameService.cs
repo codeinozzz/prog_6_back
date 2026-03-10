@@ -6,14 +6,10 @@ using MQTTnet.Protocol;
 
 namespace BattleTanks_Backend.Services;
 
-// ---- Event payloads ----
-
 public record PowerUpEvent(string Id, string Type, double X, double Y, string RoomId, long Timestamp);
 public record CollisionEvent(string AttackerId, string VictimId, string RoomId, int Damage, long Timestamp);
 public record GameEndEvent(string RoomId, string WinnerId, string WinnerName, long Timestamp);
 public record ChatMqttEvent(string RoomId, string Sender, string Message, long Timestamp);
-
-// ---- Interface ----
 
 public interface IMqttGameService
 {
@@ -24,8 +20,6 @@ public interface IMqttGameService
     Task PublishChatAsync(string roomId, string sender, string message);
     bool IsConnected { get; }
 }
-
-// ---- Implementation ----
 
 public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposable
 {
@@ -52,8 +46,6 @@ public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposabl
             .Build();
     }
 
-    // IHostedService lifecycle
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         try
@@ -73,7 +65,10 @@ public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposabl
             await _client.DisconnectAsync(cancellationToken: cancellationToken);
     }
 
-    // ---- Publish helpers ----
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     private async Task PublishAsync(string topic, object payload, MqttQualityOfServiceLevel qos = MqttQualityOfServiceLevel.AtLeastOnce)
     {
@@ -83,7 +78,7 @@ public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposabl
             return;
         }
 
-        var json = JsonSerializer.Serialize(payload);
+        var json = JsonSerializer.Serialize(payload, _jsonOptions);
         var message = new MqttApplicationMessageBuilder()
             .WithTopic(topic)
             .WithPayload(Encoding.UTF8.GetBytes(json))
@@ -94,8 +89,6 @@ public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposabl
         await _client.PublishAsync(message, CancellationToken.None);
         _logger.LogInformation("[MQTT] Published to {Topic}: {Payload}", topic, json);
     }
-
-    // ---- Public API ----
 
     public Task PublishPowerUpSpawnedAsync(string roomId, PowerUpEvent powerUp) =>
         PublishAsync(
@@ -113,13 +106,13 @@ public class MqttGameService : IMqttGameService, IHostedService, IAsyncDisposabl
         PublishAsync(
             $"{_topicPrefix}/room/{roomId}/collision",
             collision,
-            MqttQualityOfServiceLevel.AtMostOnce);   // QoS 0 — alta frecuencia
+            MqttQualityOfServiceLevel.AtMostOnce);
 
     public Task PublishGameEndAsync(string roomId, string winnerId, string winnerName) =>
         PublishAsync(
             $"{_topicPrefix}/room/{roomId}/game/end",
             new GameEndEvent(roomId, winnerId, winnerName, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
-            MqttQualityOfServiceLevel.ExactlyOnce);  // QoS 2 — evento crítico
+            MqttQualityOfServiceLevel.ExactlyOnce);
 
     public Task PublishChatAsync(string roomId, string sender, string message) =>
         PublishAsync(

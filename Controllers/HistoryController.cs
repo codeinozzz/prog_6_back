@@ -14,7 +14,6 @@ public class HistoryController : ControllerBase
         _history = history;
     }
 
-    /// <summary>Obtener historial de eventos de una sala (power-ups, colisiones, chat)</summary>
     [HttpGet("{roomId}")]
     public async Task<IActionResult> GetRoomHistory(string roomId, [FromQuery] int count = 50)
     {
@@ -22,7 +21,6 @@ public class HistoryController : ControllerBase
         return Ok(events);
     }
 
-    /// <summary>Verificar si Redis está disponible</summary>
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus()
     {

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
+using BattleTanks_Backend.Data;
 using BattleTanks_Backend.Models;
 using BattleTanks_Backend.Services;
 
@@ -17,20 +18,35 @@ public class GameHub : Hub
     private readonly IMqttGameService _mqtt;
     private readonly IRedisHistoryService _history;
     private readonly IDatabase _redis;
+    private readonly BattleTanksDbContext _context;
 
-    public GameHub(PlayerService playerService, IMqttGameService mqtt, IRedisHistoryService history, IConnectionMultiplexer redis)
+    public GameHub(PlayerService playerService, IMqttGameService mqtt, IRedisHistoryService history, IConnectionMultiplexer redis, BattleTanksDbContext context)
     {
         _playerService = playerService;
         _mqtt = mqtt;
         _history = history;
         _redis = redis.GetDatabase();
+        _context = context;
     }
 
     public async Task JoinGame(string playerId, string playerName, string roomId, double x = 0, double y = 0)
     {
         ConnectedPlayers[Context.ConnectionId] = new PlayerConnection(playerName, roomId, x, y);
 
+        if (string.IsNullOrEmpty(roomId))
+        {
+            Console.WriteLine($"[GameHub] Player registered (no room yet): {playerName}");
+            return;
+        }
+
+        await JoinRoomGroup(roomId);
+    }
+
+    private async Task JoinRoomGroup(string roomId)
+    {
+        var conn = ConnectedPlayers[Context.ConnectionId];
         var groupName = $"room-{roomId}";
+
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
 
         var existingPlayers = ConnectedPlayers
@@ -39,22 +55,20 @@ public class GameHub : Hub
             .ToList();
 
         await Clients.Caller.SendAsync("ExistingPlayers", existingPlayers);
+        await Clients.OthersInGroup(groupName).SendAsync("PlayerJoined", Context.ConnectionId, conn.PlayerName, conn.X, conn.Y);
 
-        Console.WriteLine($"[GameHub] Player joined room {roomId}: {playerName} ({playerId})");
-        await Clients.OthersInGroup(groupName).SendAsync("PlayerJoined", playerId, playerName, x, y);
+        Console.WriteLine($"[GameHub] Player joined room {roomId}: {conn.PlayerName}");
 
-        // Enviar historial de Redis al jugador que se une
         var history = await _history.GetRoomHistoryAsync(roomId, 20);
         if (history.Any())
             await Clients.Caller.SendAsync("RoomHistory", history);
 
-        // Cache en Redis: incrementar contador de jugadores por sala y guardar nombre del jugador
         try
         {
-            await _redis.HashSetAsync($"room:{roomId}:players", Context.ConnectionId, playerName);
+            await _redis.HashSetAsync($"room:{roomId}:players", Context.ConnectionId, conn.PlayerName);
             await _redis.StringIncrementAsync($"room:{roomId}:count");
         }
-        catch { /* Redis no disponible */ }
+        catch { }
     }
 
     public async Task SendPlayerMove(string playerId, object movement)
@@ -82,8 +96,39 @@ public class GameHub : Hub
         Console.WriteLine($"[GameHub] Game started in room {conn.RoomId} with map: {mapName}");
         await Clients.Group(groupName).SendAsync("GameStarted", mapName);
 
-        // Generar power-ups iniciales via MQTT
-        await SpawnInitialPowerUps(conn.RoomId);
+        if (int.TryParse(conn.RoomId, out var sessionId))
+        {
+            var session = await _context.GameSessions.FindAsync(sessionId);
+            if (session != null)
+            {
+                session.Status = SessionStatus.InProgress;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        var initialPowerUps = BuildInitialPowerUps(conn.RoomId);
+        await Clients.Group(groupName).SendAsync("InitialPowerUps", initialPowerUps);
+
+        foreach (var pu in initialPowerUps)
+            await _history.SaveEventAsync(conn.RoomId, "powerup_spawned", pu);
+    }
+
+    private static List<PowerUpEvent> BuildInitialPowerUps(string roomId)
+    {
+        var types = new[] { "ammo", "health", "speed" };
+        var positions = new (double x, double y)[] { (80, 80), (280, 80), (160, 200) };
+        var result = new List<PowerUpEvent>();
+        for (int i = 0; i < positions.Length; i++)
+        {
+            result.Add(new PowerUpEvent(
+                Id: $"pu-initial-{i}",
+                Type: types[i],
+                X: positions[i].x,
+                Y: positions[i].y,
+                RoomId: roomId,
+                Timestamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        }
+        return result;
     }
 
     public async Task SendChatMessage(string sender, string message)
@@ -94,7 +139,6 @@ public class GameHub : Hub
         var groupName = $"room-{conn.RoomId}";
         await Clients.Group(groupName).SendAsync("ReceiveChatMessage", sender, message);
 
-        // También publicar en MQTT y guardar en Redis
         await _mqtt.PublishChatAsync(conn.RoomId, sender, message);
         await _history.SaveEventAsync(conn.RoomId, "chat", new { sender, message });
     }
@@ -108,15 +152,39 @@ public class GameHub : Hub
             await Clients.OthersInGroup(groupName).SendAsync("PlayerLeft", Context.ConnectionId);
             Console.WriteLine($"[GameHub] Player left room {conn.RoomId}: {conn.PlayerName}");
 
-            // Limpiar entrada del jugador en Redis
             try
             {
                 await _redis.HashDeleteAsync($"room:{conn.RoomId}:players", Context.ConnectionId);
                 await _redis.StringDecrementAsync($"room:{conn.RoomId}:count");
             }
-            catch { /* Redis no disponible */ }
+            catch { }
+        }
+    }
 
-            await DecrementPlayerCount(conn.RoomId);
+    public async Task SetRoom(string roomId)
+    {
+        if (!ConnectedPlayers.TryGetValue(Context.ConnectionId, out var conn)) return;
+
+        var oldGroup = string.IsNullOrEmpty(conn.RoomId) ? null : $"room-{conn.RoomId}";
+        var newGroup = $"room-{roomId}";
+
+        if (oldGroup != null && oldGroup != newGroup)
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, oldGroup);
+
+        ConnectedPlayers[Context.ConnectionId] = conn with { RoomId = roomId };
+
+        await JoinRoomGroup(roomId);
+
+        if (int.TryParse(roomId, out var sessionId))
+        {
+            var session = await _context.GameSessions.FindAsync(sessionId);
+            if (session?.Status == SessionStatus.InProgress)
+            {
+                Console.WriteLine($"[GameHub] Late join: sending GameStarted to {conn.PlayerName} in room {roomId}");
+                await Clients.Caller.SendAsync("GameStarted", session.MapName);
+                var powerUps = BuildInitialPowerUps(roomId);
+                await Clients.Caller.SendAsync("InitialPowerUps", powerUps);
+            }
         }
     }
 
@@ -137,12 +205,27 @@ public class GameHub : Hub
         var groupName = $"room-{conn.RoomId}";
         await Clients.OthersInGroup(groupName).SendAsync("TileDestroyed", tileX, tileY);
 
-        // 30% de probabilidad de spawn power-up tras destruir tile
         if (_random.NextDouble() < 0.30)
             await SpawnPowerUp(conn.RoomId, tileX * 40, tileY * 40);
     }
 
-    /// <summary>Jugador reporta colisión (bala impacta tanque enemigo)</summary>
+    public async Task PlayerDied(string victimId, string victimName, string killerId, string killerName)
+    {
+        var conn = ConnectedPlayers.GetValueOrDefault(Context.ConnectionId);
+        if (conn == null) return;
+
+        var groupName = $"room-{conn.RoomId}";
+        await Clients.Group(groupName).SendAsync("PlayerDied", victimId, victimName, killerId, killerName);
+        await _history.SaveEventAsync(conn.RoomId, "player_died", new { victimId, victimName, killerId, killerName });
+        Console.WriteLine($"[GameHub] {victimName} was killed by {killerName} in room {conn.RoomId}");
+    }
+
+    public async Task SubmitScore(string playerName, int points)
+    {
+        await _playerService.SaveGameResultAsync(playerName, points, isVictory: false);
+        Console.WriteLine($"[GameHub] Score submitted for {playerName}: {points} pts");
+    }
+
     public async Task ReportCollision(string victimId, int damage)
     {
         var conn = ConnectedPlayers.GetValueOrDefault(Context.ConnectionId);
@@ -155,11 +238,12 @@ public class GameHub : Hub
             Damage: damage,
             Timestamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
+        await Clients.Client(victimId).SendAsync("PlayerHit", Context.ConnectionId, damage);
+
         await _mqtt.PublishCollisionAsync(conn.RoomId, collision);
         await _history.SaveEventAsync(conn.RoomId, "collision", collision);
     }
 
-    /// <summary>Jugador recolecta un power-up</summary>
     public async Task CollectPowerUp(string powerUpId)
     {
         var conn = ConnectedPlayers.GetValueOrDefault(Context.ConnectionId);
@@ -170,8 +254,7 @@ public class GameHub : Hub
             new { powerUpId, collectorId = Context.ConnectionId, collectorName = conn.PlayerName });
     }
 
-    /// <summary>Notificar fin de partida</summary>
-    public async Task EndGame(string winnerId, string winnerName)
+    public async Task EndGame(string winnerId, string winnerName, int finalScore = 0)
     {
         var conn = ConnectedPlayers.GetValueOrDefault(Context.ConnectionId);
         if (conn == null) return;
@@ -180,7 +263,20 @@ public class GameHub : Hub
         await Clients.Group(groupName).SendAsync("GameOver", winnerId, winnerName);
 
         await _mqtt.PublishGameEndAsync(conn.RoomId, winnerId, winnerName);
-        await _history.SaveEventAsync(conn.RoomId, "game_end", new { winnerId, winnerName });
+        await _history.SaveEventAsync(conn.RoomId, "game_end", new { winnerId, winnerName, finalScore });
+
+        if (int.TryParse(conn.RoomId, out var sessionId))
+        {
+            var session = await _context.GameSessions.FindAsync(sessionId);
+            if (session != null)
+            {
+                session.Status = SessionStatus.Finished;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        await _playerService.SaveGameResultAsync(winnerName, finalScore, isVictory: true);
+        Console.WriteLine($"[GameHub] Game over in room {conn.RoomId}. Winner: {winnerName} ({finalScore} pts)");
     }
 
     public override async Task OnConnectedAsync()
@@ -206,20 +302,6 @@ public class GameHub : Hub
         }
 
         await base.OnDisconnectedAsync(exception);
-    }
-
-    // ---- Private helpers ----
-
-    private async Task SpawnInitialPowerUps(string roomId)
-    {
-        var types = new[] { "ammo", "health", "speed" };
-        var spawnPositions = new (double x, double y)[] { (80, 80), (280, 80), (160, 200) };
-
-        for (int i = 0; i < spawnPositions.Length; i++)
-        {
-            await SpawnPowerUp(roomId, spawnPositions[i].x, spawnPositions[i].y,
-                types[i % types.Length], $"pu-initial-{i}");
-        }
     }
 
     private async Task SpawnPowerUp(string roomId, double x, double y,

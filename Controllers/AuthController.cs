@@ -71,9 +71,6 @@ public class AuthController : ControllerBase
         return Ok(new AuthResponse(player.Id, player.Username, token));
     }
 
-    // POST /api/auth/logout
-    // Guarda el JTI del token en Redis con el TTL restante para invalidarlo (blacklist)
-    // Asi aunque el token sea valido criptograficamente, se puede revocar antes de que expire
     [Authorize]
     [HttpPost("logout")]
     public IActionResult Logout()
@@ -89,7 +86,6 @@ public class AuthController : ControllerBase
 
             if (ttl > TimeSpan.Zero)
             {
-                // Almacenar JTI en Redis con el tiempo de vida restante del token
                 _redis.StringSet($"blacklist:{jti}", "revoked", ttl);
             }
         }

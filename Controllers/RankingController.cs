@@ -16,20 +16,21 @@ public class RankingController : ControllerBase
         _context = context;
     }
 
-    // GET /api/ranking?page=1&pageSize=10
-    // AsNoTracking: EF Core no rastrea los objetos devueltos, reduciendo uso de memoria
-    // y acelerando consultas de solo lectura (ranking no se va a modificar en este request)
     [HttpGet]
-    public async Task<IActionResult> GetRanking([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<IActionResult> GetRanking([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string sortBy = "victories")
     {
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
         var skip = (page - 1) * pageSize;
 
-        var players = await _context.Players
-            .AsNoTracking()
-            .OrderByDescending(p => p.TotalScore)
+        var query = _context.Players.AsNoTracking();
+
+        var ordered = sortBy == "score"
+            ? query.OrderByDescending(p => p.TotalScore)
+            : query.OrderByDescending(p => p.Victories).ThenByDescending(p => p.TotalScore);
+
+        var players = await ordered
             .Skip(skip)
             .Take(pageSize)
             .Select(p => new
@@ -54,15 +55,11 @@ public class RankingController : ControllerBase
         });
     }
 
-    // GET /api/ranking/benchmark
-    // Compara tiempos de consulta: con tracking vs sin tracking (AsNoTracking)
-    // Esto demuestra el impacto real de AsNoTracking en consultas de lectura pura
     [HttpGet("benchmark")]
     public async Task<IActionResult> Benchmark()
     {
         var results = new List<object>();
 
-        // -- Sin AsNoTracking (EF rastrea los objetos en el ChangeTracker) --
         var swTracked = Stopwatch.StartNew();
         var tracked = await _context.Players
             .OrderByDescending(p => p.TotalScore)
@@ -77,10 +74,8 @@ public class RankingController : ControllerBase
             elapsedMs = swTracked.Elapsed.TotalMilliseconds
         });
 
-        // Limpiar el ChangeTracker para que no afecte la siguiente medicion
         _context.ChangeTracker.Clear();
 
-        // -- Con AsNoTracking (EF no rastrea, mas rapido para lectura pura) --
         var swNoTracking = Stopwatch.StartNew();
         var noTracking = await _context.Players
             .AsNoTracking()

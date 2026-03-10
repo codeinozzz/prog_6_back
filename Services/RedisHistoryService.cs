@@ -46,10 +46,9 @@ public class RedisHistoryService : IRedisHistoryService
                 JsonSerializer.Serialize(payload),
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
 
-            // Append to list and trim to max size
             await db.ListRightPushAsync(key, entry);
             await db.ListTrimAsync(key, -_maxHistory, -1);
-            await db.KeyExpireAsync(key, TimeSpan.FromHours(2)); // auto-clean after 2h
+            await db.KeyExpireAsync(key, TimeSpan.FromHours(2));
         }
         catch (Exception ex)
         {

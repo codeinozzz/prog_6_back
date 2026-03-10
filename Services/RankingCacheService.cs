@@ -4,10 +4,6 @@ using BattleTanks_Backend.Data;
 
 namespace BattleTanks_Backend.Services;
 
-// Servicio de cache de ranking usando Redis SortedSet
-// Estructura en Redis:
-//   ranking:global -> SortedSet donde score=TotalScore y member=Username
-//   TTL: 5 minutos (se invalida al terminar cada partida)
 public class RankingCacheService
 {
     private const string RankingKey = "ranking:global";
@@ -22,10 +18,8 @@ public class RankingCacheService
         _redis = redis.GetDatabase();
     }
 
-    // Devuelve el top N de jugadores. Primero intenta Redis, si no hay cache consulta PostgreSQL
     public async Task<List<RankingEntry>> GetTopRankingAsync(int count = 10)
     {
-        // Intentar leer desde Redis SortedSet (descendente por puntos)
         try
         {
             var cached = await _redis.SortedSetRangeByRankWithScoresAsync(
@@ -41,12 +35,8 @@ public class RankingCacheService
                 )).ToList();
             }
         }
-        catch
-        {
-            // Redis no disponible: continuar con PostgreSQL
-        }
+        catch { }
 
-        // Cache miss o Redis no disponible: consulta PostgreSQL con AsNoTracking
         var players = await _context.Players
             .AsNoTracking()
             .OrderByDescending(p => p.TotalScore)
@@ -54,7 +44,6 @@ public class RankingCacheService
             .Select(p => new { p.Username, p.TotalScore })
             .ToListAsync();
 
-        // Actualizar Redis con los datos de PostgreSQL
         try
         {
             if (players.Count > 0)
@@ -67,10 +56,7 @@ public class RankingCacheService
                 await _redis.KeyExpireAsync(RankingKey, CacheTtl);
             }
         }
-        catch
-        {
-            // Redis no disponible, continuar sin cache
-        }
+        catch { }
 
         return players.Select((p, i) => new RankingEntry(
             Rank: i + 1,
@@ -80,18 +66,16 @@ public class RankingCacheService
         )).ToList();
     }
 
-    // Actualiza el score de un jugador en Redis cuando termina una partida
     public async Task UpdatePlayerScoreAsync(string username, int newTotalScore)
     {
         try { await _redis.SortedSetAddAsync(RankingKey, username, newTotalScore); }
-        catch { /* Redis no disponible */ }
+        catch { }
     }
 
-    // Invalida el cache completo (util tras una partida que cambia muchos scores)
     public async Task InvalidateCacheAsync()
     {
         try { await _redis.KeyDeleteAsync(RankingKey); }
-        catch { /* Redis no disponible */ }
+        catch { }
     }
 }
 

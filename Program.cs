@@ -68,7 +68,6 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
 
-// Redis: opcional, el servidor arranca aunque Redis no este disponible
 IConnectionMultiplexer? redisConnection = null;
 try
 {
@@ -86,16 +85,12 @@ builder.Services.AddScoped<RankingCacheService>();
 builder.Services.AddSingleton<IRedisHistoryService, RedisHistoryService>();
 builder.Services.AddScoped<PlayerService>();
 
-// Activity 3: Connection Pooling - Npgsql reutiliza conexiones del pool en lugar de abrir una nueva
-// por cada request. MaxPoolSize limita conexiones simultaneas, MinPoolSize mantiene conexiones
-// precalentadas para reducir latencia en el primer request
 builder.Services.AddDbContext<BattleTanksDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         npgsqlOptions => npgsqlOptions.CommandTimeout(30)
     ));
 
-// MQTT — registrado como singleton Y como hosted service
 builder.Services.AddSingleton<MqttGameService>();
 builder.Services.AddSingleton<IMqttGameService>(sp => sp.GetRequiredService<MqttGameService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MqttGameService>());
