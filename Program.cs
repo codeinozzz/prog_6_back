@@ -81,7 +81,6 @@ catch (Exception ex)
 }
 builder.Services.AddSingleton<IConnectionMultiplexer>(
     _ => redisConnection ?? ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false"));
-builder.Services.AddScoped<RankingCacheService>();
 builder.Services.AddSingleton<IRedisHistoryService, RedisHistoryService>();
 builder.Services.AddScoped<PlayerService>();
 

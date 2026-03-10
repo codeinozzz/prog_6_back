@@ -10,5 +10,4 @@ public class Player
     public int Victories { get; set; }
     public int TotalScore { get; set; }
     public DateTime CreatedAt { get; set; }
-    public List<GameSession> GameSessions { get; set; } = new();
 }

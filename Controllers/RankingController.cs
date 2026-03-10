@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BattleTanks_Backend.Data;
@@ -55,46 +54,4 @@ public class RankingController : ControllerBase
         });
     }
 
-    [HttpGet("benchmark")]
-    public async Task<IActionResult> Benchmark()
-    {
-        var results = new List<object>();
-
-        var swTracked = Stopwatch.StartNew();
-        var tracked = await _context.Players
-            .OrderByDescending(p => p.TotalScore)
-            .Take(10)
-            .ToListAsync();
-        swTracked.Stop();
-
-        results.Add(new
-        {
-            mode = "WithTracking",
-            records = tracked.Count,
-            elapsedMs = swTracked.Elapsed.TotalMilliseconds
-        });
-
-        _context.ChangeTracker.Clear();
-
-        var swNoTracking = Stopwatch.StartNew();
-        var noTracking = await _context.Players
-            .AsNoTracking()
-            .OrderByDescending(p => p.TotalScore)
-            .Take(10)
-            .ToListAsync();
-        swNoTracking.Stop();
-
-        results.Add(new
-        {
-            mode = "AsNoTracking",
-            records = noTracking.Count,
-            elapsedMs = swNoTracking.Elapsed.TotalMilliseconds
-        });
-
-        return Ok(new
-        {
-            description = "Comparativa de rendimiento: tracking vs AsNoTracking",
-            results
-        });
-    }
 }

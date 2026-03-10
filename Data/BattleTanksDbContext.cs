@@ -43,7 +43,7 @@ public class BattleTanksDbContext : DbContext
             .HasDatabaseName("IX_Scores_PlayerId_AchievedAt");
 
         modelBuilder.Entity<Score>()
-            .HasOne(s => s.Player)
+            .HasOne<Player>()
             .WithMany()
             .HasForeignKey(s => s.PlayerId)
             .OnDelete(DeleteBehavior.Cascade);
