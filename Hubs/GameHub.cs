@@ -35,7 +35,8 @@ public class GameHub : Hub
 
         if (string.IsNullOrEmpty(roomId))
         {
-            Console.WriteLine($"[GameHub] Player registered (no room yet): {playerName}");
+            await Groups.AddToGroupAsync(Context.ConnectionId, "lobby");
+            Console.WriteLine($"[GameHub] Player registered in lobby: {playerName}");
             return;
         }
 
@@ -136,6 +137,12 @@ public class GameHub : Hub
         var conn = ConnectedPlayers.GetValueOrDefault(Context.ConnectionId);
         if (conn == null) return;
 
+        if (string.IsNullOrEmpty(conn.RoomId))
+        {
+            await Clients.Group("lobby").SendAsync("ReceiveChatMessage", sender, message);
+            return;
+        }
+
         var groupName = $"room-{conn.RoomId}";
         await Clients.Group(groupName).SendAsync("ReceiveChatMessage", sender, message);
 
@@ -145,20 +152,24 @@ public class GameHub : Hub
 
     public async Task LeaveRoom()
     {
-        if (ConnectedPlayers.TryRemove(Context.ConnectionId, out var conn))
-        {
-            var groupName = $"room-{conn.RoomId}";
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
-            await Clients.OthersInGroup(groupName).SendAsync("PlayerLeft", Context.ConnectionId);
-            Console.WriteLine($"[GameHub] Player left room {conn.RoomId}: {conn.PlayerName}");
+        if (!ConnectedPlayers.TryGetValue(Context.ConnectionId, out var conn)) return;
+        if (string.IsNullOrEmpty(conn.RoomId)) return;
 
-            try
-            {
-                await _redis.HashDeleteAsync($"room:{conn.RoomId}:players", Context.ConnectionId);
-                await _redis.StringDecrementAsync($"room:{conn.RoomId}:count");
-            }
-            catch { }
+        var groupName = $"room-{conn.RoomId}";
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+        await Clients.OthersInGroup(groupName).SendAsync("PlayerLeft", Context.ConnectionId);
+        Console.WriteLine($"[GameHub] Player left room {conn.RoomId}: {conn.PlayerName}");
+
+        // Keep player registered but reset room so SetRoom/StartGame keep working
+        ConnectedPlayers[Context.ConnectionId] = conn with { RoomId = "" };
+        await Groups.AddToGroupAsync(Context.ConnectionId, "lobby");
+
+        try
+        {
+            await _redis.HashDeleteAsync($"room:{conn.RoomId}:players", Context.ConnectionId);
+            await _redis.StringDecrementAsync($"room:{conn.RoomId}:count");
         }
+        catch { }
     }
 
     public async Task SetRoom(string roomId)
@@ -167,6 +178,9 @@ public class GameHub : Hub
 
         var oldGroup = string.IsNullOrEmpty(conn.RoomId) ? null : $"room-{conn.RoomId}";
         var newGroup = $"room-{roomId}";
+
+        // Leave lobby group when joining a room
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "lobby");
 
         if (oldGroup != null && oldGroup != newGroup)
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, oldGroup);
@@ -254,16 +268,15 @@ public class GameHub : Hub
             new { powerUpId, collectorId = Context.ConnectionId, collectorName = conn.PlayerName });
     }
 
+    private static readonly ConcurrentDictionary<string, bool> _endedRooms = new();
+
     public async Task EndGame(string winnerId, string winnerName, int finalScore = 0)
     {
         var conn = ConnectedPlayers.GetValueOrDefault(Context.ConnectionId);
         if (conn == null) return;
 
-        var groupName = $"room-{conn.RoomId}";
-        await Clients.Group(groupName).SendAsync("GameOver", winnerId, winnerName);
-
-        await _mqtt.PublishGameEndAsync(conn.RoomId, winnerId, winnerName);
-        await _history.SaveEventAsync(conn.RoomId, "game_end", new { winnerId, winnerName, finalScore });
+        // Idempotency: only the first call per room is processed
+        if (!_endedRooms.TryAdd(conn.RoomId, true)) return;
 
         if (int.TryParse(conn.RoomId, out var sessionId))
         {
@@ -275,8 +288,15 @@ public class GameHub : Hub
             }
         }
 
-        await _playerService.SaveGameResultAsync(winnerName, finalScore, isVictory: true);
-        Console.WriteLine($"[GameHub] Game over in room {conn.RoomId}. Winner: {winnerName} ({finalScore} pts)");
+        var groupName = $"room-{conn.RoomId}";
+        await Clients.Group(groupName).SendAsync("GameOver", winnerId, winnerName);
+
+        await _mqtt.PublishGameEndAsync(conn.RoomId, winnerId, winnerName);
+        await _history.SaveEventAsync(conn.RoomId, "game_end", new { winnerId, winnerName, finalScore });
+
+        // Use server-side player name to avoid trusting client input
+        await _playerService.SaveGameResultAsync(conn.PlayerName, finalScore, isVictory: true);
+        Console.WriteLine($"[GameHub] Game over in room {conn.RoomId}. Winner: {conn.PlayerName} ({finalScore} pts)");
     }
 
     public override async Task OnConnectedAsync()
@@ -324,5 +344,8 @@ public class GameHub : Hub
     {
         if (!int.TryParse(roomId, out var sessionId)) return;
         await _playerService.DecrementSessionAsync(sessionId);
+        // Clean up ended-room tracking when the room is fully empty
+        if (!ConnectedPlayers.Values.Any(p => p.RoomId == roomId))
+            _endedRooms.TryRemove(roomId, out _);
     }
 }
